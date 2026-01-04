@@ -191,7 +191,7 @@ const View = () => {
                     }`}
                   >
                     <Card
-                      className={`px-4 text-xs lg:text-sm py-0 transition-all select-none shadow-none ${
+                      className={`p-3 text-xs lg:text-sm transition-all shadow-none ${
                         isUser
                           ? "!bg-primary text-primary-foreground !border-primary rounded-tr-sm"
                           : "!bg-muted/50 dark:!bg-muted/30 rounded-tl-sm"
