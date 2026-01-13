@@ -274,7 +274,14 @@ pub async fn transcribe_audio(
                     primary_error.clone()
                 };
                 async move {
-                    report_api_error(app, error_msg, "/api/transcribe".to_string(), error_model, error_provider).await;
+                    report_api_error(
+                        app,
+                        error_msg,
+                        "/api/transcribe".to_string(),
+                        error_model,
+                        error_provider,
+                    )
+                    .await;
                 }
             });
             Err("Transcription failed. Please try again.".to_string())
@@ -594,7 +601,8 @@ pub async fn chat_stream_response(
                 let model = model.clone();
                 let error_msg = e.to_string();
                 async move {
-                    report_api_error(app, error_msg, "/api/chat".to_string(), model, provider).await;
+                    report_api_error(app, error_msg, "/api/chat".to_string(), model, provider)
+                        .await;
                 }
             });
             return Err(final_message);
@@ -706,7 +714,8 @@ pub async fn chat_stream_response(
                     let model = model.clone();
                     let error_msg = e.to_string();
                     async move {
-                        report_api_error(app, error_msg, "/api/chat".to_string(), model, provider).await;
+                        report_api_error(app, error_msg, "/api/chat".to_string(), model, provider)
+                            .await;
                     }
                 });
                 return Err(final_message);
@@ -875,10 +884,22 @@ async fn report_api_error(
 
 // Models API Command
 #[tauri::command]
-pub async fn fetch_models() -> Result<Vec<Model>, String> {
+pub async fn fetch_models(app: AppHandle) -> Result<Vec<Model>, String> {
     // Get environment variables
     let app_endpoint = get_app_endpoint()?;
     let api_access_key = get_api_access_key()?;
+
+    let (license_key, instance_id) = match get_stored_credentials(&app).await {
+        Ok((lk, id, _)) => (lk, id),
+        Err(_) => ("".to_string(), "".to_string()),
+    };
+    let machine_id = app
+        .machine_uid()
+        .get_machine_uid()
+        .ok()
+        .and_then(|uid| uid.id)
+        .unwrap_or_else(|| "".to_string());
+    let app_version = app.package_info().version.to_string();
 
     // Make HTTP request to models endpoint
     let client = reqwest::Client::new();
@@ -888,6 +909,10 @@ pub async fn fetch_models() -> Result<Vec<Model>, String> {
         .post(&url)
         .header("Content-Type", "application/json")
         .header("Authorization", format!("Bearer {}", api_access_key))
+        .header("license_key", &license_key)
+        .header("instance", &instance_id)
+        .header("machine_id", &machine_id)
+        .header("app_version", &app_version)
         .send()
         .await
         .map_err(|e| {

@@ -182,6 +182,7 @@ export const PluelyApiSetup = () => {
         }
 
         await loadLicenseStatus(); // Reload status
+        await fetchModels();
         await getActiveLicenseStatus();
       } else {
         setError(response.error || "Failed to activate license");
@@ -214,6 +215,7 @@ export const PluelyApiSetup = () => {
       // Disable Pluely API when license is removed
       setPluelyApiEnabled(false);
 
+      await fetchModels();
       await loadLicenseStatus(); // Reload status
     } catch (err) {
       console.error("Failed to remove license:", err);
