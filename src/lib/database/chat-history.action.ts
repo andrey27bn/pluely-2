@@ -1,3 +1,20 @@
+/*
+ * This file is part of Pluely.
+ *
+ * Pluely is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * Pluely is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with Pluely.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
 import { getDatabase } from "./config";
 import { ChatConversation } from "@/types";
 import { safeLocalStorage } from "@/lib";
@@ -392,11 +409,20 @@ export async function deleteAllConversations(): Promise<void> {
   const db = await getDatabase();
 
   try {
+    // Use a transaction to ensure atomicity
+    await db.execute("BEGIN TRANSACTION");
+
     // Delete in correct order (messages first due to foreign key)
     await db.execute("DELETE FROM messages");
     await db.execute("DELETE FROM conversations");
+
+    await db.execute("COMMIT");
+
+    // Emit event to notify UI about the deletion
+    window.dispatchEvent(new CustomEvent('allConversationsDeleted'));
   } catch (error) {
     console.error("Failed to delete all conversations:", error);
+    await db.execute("ROLLBACK").catch(console.error); // Attempt rollback on failure
     throw error;
   }
 }

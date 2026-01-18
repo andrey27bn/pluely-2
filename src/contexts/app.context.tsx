@@ -1,3 +1,5 @@
+
+
 import {
   AI_PROVIDERS,
   DEFAULT_SYSTEM_PROMPT,
@@ -121,11 +123,17 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   });
 
   const [screenshotConfiguration, setScreenshotConfiguration] =
-    useState<ScreenshotConfig>({
-      mode: "manual",
-      autoPrompt: "Analyze this screenshot and provide insights",
-      enabled: true,
-    });
+		useState<ScreenshotConfig>({
+			mode: 'manual',
+			autoPrompt: `Ты видишь изображение с задачей, кодом или текстом.
+                  1. Найди ошибки или проблемные места.
+                  2. Объясни пошагово, почему это ошибка.
+                  3. Дай правильное решение или исправленный вариант.
+                  4. Форматируй код блоками, а пояснения текстом.
+                  5. Не упоминай ИИ и методы распознавания изображения.
+                  6. Давай краткий итог после объяснения.`,
+			enabled: true,
+		})
 
   // Unified Customizable State
   const [customizable, setCustomizable] = useState<CustomizableState>(
@@ -161,10 +169,16 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     const autoConfigsEnabled = localStorage.getItem("auto-configs-enabled");
     if (response.is_active && !autoConfigsEnabled) {
       setScreenshotConfiguration({
-        mode: "auto",
-        autoPrompt: "Analyze the screenshot and provide insights",
-        enabled: false,
-      });
+				mode: 'auto',
+				autoPrompt: `Ты видишь изображение с задачей, кодом или текстом.
+                  1. Найди ошибки или проблемные места.
+                  2. Объясни пошагово, почему это ошибка.
+                  3. Дай правильное решение или исправленный вариант.
+                  4. Форматируй код блоками, а пояснения текстом.
+                  5. Не упоминай ИИ и методы распознавания изображения.
+                  6. Давай краткий итог после объяснения.`,
+				enabled: true,
+			})
       // Set the flag to true so that we don't change the mode again
       localStorage.setItem("auto-configs-enabled", "true");
     }
@@ -209,7 +223,13 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
             mode: parsed.mode || "manual",
             autoPrompt:
               parsed.autoPrompt ||
-              "Analyze this screenshot and provide insights",
+              `Ты видишь изображение с задачей, кодом или текстом.
+                  1. Найди ошибки или проблемные места.
+                  2. Объясни пошагово, почему это ошибка.
+                  3. Дай правильное решение или исправленный вариант.
+                  4. Форматируй код блоками, а пояснения текстом.
+                  5. Не упоминай ИИ и методы распознавания изображения.
+                  6. Давай краткий итог после объяснения.`,
             enabled: parsed.enabled !== undefined ? parsed.enabled : false,
           });
         }

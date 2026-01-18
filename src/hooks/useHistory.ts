@@ -1,3 +1,20 @@
+/*
+ * This file is part of Pluely.
+ *
+ * Pluely is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * Pluely is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with Pluely.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
 import { useState, useEffect, useCallback } from "react";
 import {
   getAllConversations,
@@ -74,6 +91,27 @@ export function useHistory(): UseHistoryReturn {
   // Load conversations when component mounts or popover opens
   useEffect(() => {
     refreshConversations();
+
+    // Listen for conversation deletion events
+    const handleConversationDeleted = () => {
+      refreshConversations(); // Refresh the list after any deletion
+    };
+
+    // Listen for all conversations deleted event
+    const handleAllConversationsDeleted = () => {
+      setConversations([]); // Clear all conversations from state
+      setSelectedConversationId(null);
+      setViewingConversation(null);
+    };
+
+    window.addEventListener("conversationDeleted", handleConversationDeleted);
+    window.addEventListener("allConversationsDeleted", handleAllConversationsDeleted);
+
+    // Cleanup listeners on unmount
+    return () => {
+      window.removeEventListener("conversationDeleted", handleConversationDeleted);
+      window.removeEventListener("allConversationsDeleted", handleAllConversationsDeleted);
+    };
   }, [refreshConversations]);
 
   const handleViewConversation = (conversation: ChatConversation) => {

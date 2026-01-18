@@ -1,3 +1,20 @@
+/*
+ * This file is part of Pluely.
+ *
+ * Pluely is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * Pluely is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with Pluely.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
 import { useState, useCallback, useRef, useEffect } from "react";
 import { useWindowResize } from "./useWindow";
 import { useGlobalShortcuts } from "@/hooks";
@@ -60,6 +77,13 @@ export const useCompletion = () => {
     screenshotConfiguration,
     setScreenshotConfiguration,
   } = useApp();
+
+  const providerRef = useRef(selectedAIProvider)
+
+	useEffect(() => {
+		providerRef.current = selectedAIProvider
+	}, [selectedAIProvider])
+
   const globalShortcuts = useGlobalShortcuts();
 
   const [state, setState] = useState<CompletionState>({
@@ -487,6 +511,11 @@ export const useCompletion = () => {
       }
     };
 
+    const handleAllConversationsDeleted = () => {
+      // Start a new conversation when all are deleted
+      startNewConversation();
+    };
+
     const handleStorageChange = async (e: StorageEvent) => {
       if (e.key === "pluely-conversation-selected" && e.newValue) {
         try {
@@ -507,6 +536,7 @@ export const useCompletion = () => {
     window.addEventListener("conversationSelected", handleConversationSelected);
     window.addEventListener("newConversation", handleNewConversation);
     window.addEventListener("conversationDeleted", handleConversationDeleted);
+    window.addEventListener("allConversationsDeleted", handleAllConversationsDeleted);
     window.addEventListener("storage", handleStorageChange);
 
     return () => {
@@ -519,6 +549,7 @@ export const useCompletion = () => {
         "conversationDeleted",
         handleConversationDeleted
       );
+      window.removeEventListener("allConversationsDeleted", handleAllConversationsDeleted);
       window.removeEventListener("storage", handleStorageChange);
     };
   }, [loadConversation, startNewConversation, state.currentConversationId]);
@@ -582,15 +613,17 @@ export const useCompletion = () => {
 
             let fullResponse = "";
 
-            const usePluelyAPI = await shouldUsePluelyAPI();
-            // Check if AI provider is configured
-            if (!selectedAIProvider.provider && !usePluelyAPI) {
-              setState((prev) => ({
-                ...prev,
-                error: "Please select an AI provider in settings",
-              }));
-              return;
-            }
+            const usePluelyAPI = await shouldUsePluelyAPI()
+
+            const providerState = providerRef.current
+
+						if (!providerState.provider && !usePluelyAPI) {
+							setState(prev => ({
+								...prev,
+								error: 'Please select an AI provider in settings',
+							}))
+							return
+						}
 
             const provider = allAiProviders.find(
               (p) => p.id === selectedAIProvider.provider
@@ -614,25 +647,25 @@ export const useCompletion = () => {
 
             // Use the fetchAIResponse function with image and signal
             for await (const chunk of fetchAIResponse({
-              provider: usePluelyAPI ? undefined : provider,
-              selectedProvider: selectedAIProvider,
-              systemPrompt: systemPrompt || undefined,
-              history: messageHistory,
-              userMessage: prompt,
-              imagesBase64: [base64],
-              signal,
-            })) {
-              // Only update if this is still the current request
-              if (currentRequestIdRef.current !== requestId || signal.aborted) {
-                return; // Request was superseded or cancelled
-              }
+							provider: usePluelyAPI ? undefined : provider,
+							selectedProvider: providerState,
+							systemPrompt: systemPrompt || undefined,
+							history: messageHistory,
+							userMessage: prompt,
+							imagesBase64: [base64],
+							signal,
+						})) {
+							// Only update if this is still the current request
+							if (currentRequestIdRef.current !== requestId || signal.aborted) {
+								return // Request was superseded or cancelled
+							}
 
-              fullResponse += chunk;
-              setState((prev) => ({
-                ...prev,
-                response: prev.response + chunk,
-              }));
-            }
+							fullResponse += chunk
+							setState(prev => ({
+								...prev,
+								response: prev.response + chunk,
+							}))
+						}
 
             // Only proceed if this is still the current request
             if (currentRequestIdRef.current !== requestId || signal.aborted) {
@@ -849,6 +882,30 @@ export const useCompletion = () => {
     if (!handleScreenshotSubmit) return;
 
     const config = screenshotConfigRef.current;
+
+    // Check if AI provider is required (for auto mode)
+    if (config.enabled && config.mode === "auto") {
+      const usePluelyAPI = await shouldUsePluelyAPI();
+      if (!selectedAIProvider.provider && !usePluelyAPI) {
+        setState((prev) => ({
+          ...prev,
+          error: "Please select an AI provider in settings",
+        }));
+        return;
+      }
+
+      const provider = allAiProviders.find(
+        (p) => p.id === selectedAIProvider.provider
+      );
+      if (!provider && !usePluelyAPI) {
+        setState((prev) => ({
+          ...prev,
+          error: "Invalid provider selected",
+        }));
+        return;
+      }
+    }
+
     screenshotInitiatedByThisContext.current = true;
     setIsScreenshotLoading(true);
 
@@ -914,7 +971,7 @@ export const useCompletion = () => {
         setIsScreenshotLoading(false);
       }
     }
-  }, [handleScreenshotSubmit]);
+  }, [handleScreenshotSubmit, selectedAIProvider, allAiProviders]);
 
   useEffect(() => {
     let unlisten: any;

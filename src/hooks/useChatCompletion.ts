@@ -1,3 +1,20 @@
+/*
+ * This file is part of Pluely.
+ *
+ * Pluely is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * Pluely is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with Pluely.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
 import { useState, useCallback, useRef, useEffect } from "react";
 import { useApp } from "@/contexts";
 import { MAX_FILES } from "@/config";
@@ -538,6 +555,29 @@ export const useChatCompletion = (
 
     const config = screenshotConfigRef.current;
 
+    // Check if AI provider is required (for auto mode)
+    if (config.enabled && config.mode === "auto") {
+      const usePluelyAPI = await shouldUsePluelyAPI();
+      if (!selectedAIProvider.provider && !usePluelyAPI) {
+        setState((prev) => ({
+          ...prev,
+          error: "Please select an AI provider in settings",
+        }));
+        return;
+      }
+
+      const provider = allAiProviders.find(
+        (p) => p.id === selectedAIProvider.provider
+      );
+      if (!provider && !usePluelyAPI) {
+        setState((prev) => ({
+          ...prev,
+          error: "Invalid provider selected",
+        }));
+        return;
+      }
+    }
+
     // Mark that this context initiated the screenshot
     screenshotInitiatedByThisContext.current = true;
 
@@ -616,7 +656,7 @@ export const useChatCompletion = (
         setIsScreenshotLoading(false);
       }
     }
-  }, [handleScreenshotSubmit, hasActiveLicense]);
+  }, [handleScreenshotSubmit, hasActiveLicense, selectedAIProvider, allAiProviders]);
 
   useEffect(() => {
     let unlisten: any;

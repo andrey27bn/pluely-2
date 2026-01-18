@@ -1,3 +1,20 @@
+/*
+ * This file is part of Pluely.
+ *
+ * Pluely is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * Pluely is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with Pluely.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
 import {
   buildDynamicMessages,
   deepVariableReplacer,
@@ -55,10 +72,12 @@ async function* fetchPluelyAIResponse(params: {
     const {
       systemPrompt,
       userMessage,
-      imagesBase64 = [],
+      imagesBase64: originalImagesBase64 = [],
       history = [],
       signal,
     } = params;
+
+    let imagesBase64 = [...originalImagesBase64]; // Create a mutable copy
 
     // Check if already aborted before starting
     if (signal?.aborted) {
@@ -180,9 +199,11 @@ export async function* fetchAIResponse(params: {
       systemPrompt,
       history = [],
       userMessage,
-      imagesBase64 = [],
+      imagesBase64: originalImagesBase64 = [],
       signal,
     } = params;
+
+    let imagesBase64 = [...originalImagesBase64]; // Create a mutable copy
 
     // Check if already aborted
     if (signal?.aborted) {
@@ -239,10 +260,11 @@ export async function* fetchAIResponse(params: {
     if (!userMessage) {
       throw new Error("User message is required");
     }
+    // If provider doesn't support images, strip them from the request
     if (imagesBase64.length > 0 && !provider.curl.includes("{{IMAGE}}")) {
-      throw new Error(
-        `Provider ${provider?.id ?? "unknown"} does not support image input`
-      );
+      console.warn(`Provider ${provider?.id ?? "unknown"} does not support image input. Proceeding with text-only request.`);
+      // Reset imagesBase64 to empty array to proceed with text-only request
+      imagesBase64 = [];
     }
 
     let bodyObj: any = curlJson.data
