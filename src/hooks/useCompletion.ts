@@ -83,11 +83,24 @@ export const useCompletion = () => {
   const hasCheckedPermissionRef = useRef(false);
   const screenshotInitiatedByThisContext = useRef(false);
 
+  // Добавляем рефы для провайдеров
+  const providersRef = useRef(allAiProviders);
+  const selectedProviderRef = useRef(selectedAIProvider);
+
   const { resizeWindow } = useWindowResize();
 
   useEffect(() => {
     screenshotConfigRef.current = screenshotConfiguration;
   }, [screenshotConfiguration]);
+
+  // Синхронизация рефов
+  useEffect(() => {
+    providersRef.current = allAiProviders;
+  }, [allAiProviders]);
+
+  useEffect(() => {
+    selectedProviderRef.current = selectedAIProvider;
+  }, [selectedAIProvider]);
 
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
@@ -180,8 +193,13 @@ export const useCompletion = () => {
         let fullResponse = "";
 
         const usePluelyAPI = await shouldUsePluelyAPI();
+
+        // Используем рефы вместо переменных из замыкания
+        const currentProviders = providersRef.current;
+        const currentSelected = selectedProviderRef.current;
+
         // Check if AI provider is configured
-        if (!selectedAIProvider.provider && !usePluelyAPI) {
+        if (!currentSelected.provider && !usePluelyAPI) {
           setState((prev) => ({
             ...prev,
             error: "Please select an AI provider in settings",
@@ -189,10 +207,12 @@ export const useCompletion = () => {
           return;
         }
 
-        const provider = allAiProviders.find(
-          (p) => p.id === selectedAIProvider.provider
+        const provider = currentProviders.find(
+          (p) => p.id === currentSelected.provider
         );
         if (!provider && !usePluelyAPI) {
+          // Логируем для отладки, если вдруг массив пустой
+          console.error("Provider lookup failed. Providers in ref:", currentProviders);
           setState((prev) => ({
             ...prev,
             error: "Invalid provider selected",
@@ -212,7 +232,7 @@ export const useCompletion = () => {
           // Use the fetchAIResponse function with signal
           for await (const chunk of fetchAIResponse({
             provider: usePluelyAPI ? undefined : provider,
-            selectedProvider: selectedAIProvider,
+            selectedProvider: currentSelected, // Используем значение из рефа
             systemPrompt: systemPrompt || undefined,
             history: messageHistory,
             userMessage: input,
@@ -287,10 +307,10 @@ export const useCompletion = () => {
     [
       state.input,
       state.attachedFiles,
-      selectedAIProvider,
-      allAiProviders,
       systemPrompt,
       state.conversationHistory,
+      providersRef, // Добавляем рефы в зависимости
+      selectedProviderRef
     ]
   );
 
@@ -583,8 +603,13 @@ export const useCompletion = () => {
             let fullResponse = "";
 
             const usePluelyAPI = await shouldUsePluelyAPI();
+
+            // Используем рефы вместо переменных из замыкания
+            const currentProviders = providersRef.current;
+            const currentSelected = selectedProviderRef.current;
+
             // Check if AI provider is configured
-            if (!selectedAIProvider.provider && !usePluelyAPI) {
+            if (!currentSelected.provider && !usePluelyAPI) {
               setState((prev) => ({
                 ...prev,
                 error: "Please select an AI provider in settings",
@@ -592,10 +617,12 @@ export const useCompletion = () => {
               return;
             }
 
-            const provider = allAiProviders.find(
-              (p) => p.id === selectedAIProvider.provider
+            const provider = currentProviders.find(
+              (p) => p.id === currentSelected.provider
             );
             if (!provider && !usePluelyAPI) {
+              // Логируем для отладки, если вдруг массив пустой
+              console.error("Provider lookup failed. Providers in ref:", currentProviders);
               setState((prev) => ({
                 ...prev,
                 error: "Invalid provider selected",
@@ -615,7 +642,7 @@ export const useCompletion = () => {
             // Use the fetchAIResponse function with image and signal
             for await (const chunk of fetchAIResponse({
               provider: usePluelyAPI ? undefined : provider,
-              selectedProvider: selectedAIProvider,
+              selectedProvider: currentSelected, // Используем значение из рефа
               systemPrompt: systemPrompt || undefined,
               history: messageHistory,
               userMessage: prompt,
@@ -701,11 +728,11 @@ export const useCompletion = () => {
     [
       state.attachedFiles.length,
       state.conversationHistory,
-      selectedAIProvider,
-      allAiProviders,
       systemPrompt,
       saveCurrentConversation,
       inputRef,
+      providersRef, // Добавляем рефы в зависимости
+      selectedProviderRef
     ]
   );
 
